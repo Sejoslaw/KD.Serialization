@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Authors>Krzysztof Dobrzyński</Authors>
+    <Company>Krzysztof Dobrzyński</Company>
+    <Copyright>https://github.com/Sejoslaw/KD.Serialization</Copyright>
+    <PackageLicenseUrl>https://github.com/Sejoslaw/KD.Serialization</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/Sejoslaw/KD.Serialization</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Sejoslaw/KD.Serialization</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\KD.Serialization\KD.Serialization.csproj" />
+  </ItemGroup>
+
+</Project>
