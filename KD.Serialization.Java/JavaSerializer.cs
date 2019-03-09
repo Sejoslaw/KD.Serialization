@@ -14,7 +14,7 @@ namespace KD.Serialization.Java
     /// 
     /// @see java.io.ObjectOutputStream
     /// </summary>
-    public class JavaSerializer : ISerializer
+    public class JavaSerializer : AbstractSerializer
     {
         /// <summary>
         /// Current offset into buffer.
@@ -45,15 +45,9 @@ namespace KD.Serialization.Java
         /// Maps: Object -> Replacement Object
         /// </summary>
         private JavaReplaceTable replaceTable;
-        /// <summary>
-        /// Stream into which all the serialized data will be written.
-        /// </summary>
-        private Stream stream;
 
-        public JavaSerializer(Stream stream)
+        public JavaSerializer(Stream stream) : base(stream)
         {
-            this.stream = stream;
-
             this.handleTable = new JavaHandleTable(10);
             this.replaceTable = new JavaReplaceTable(10);
 
@@ -61,38 +55,41 @@ namespace KD.Serialization.Java
             this.SetBlockMode(true);
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
+            base.Dispose();
             this.position = 0;
             this.buffer = null;
             this.hBuffer = null;
         }
 
-        public void Flush()
+        public override void Flush()
         {
             this.Drain();
-            this.stream.Flush();
+            this.Stream.Flush();
         }
 
-        public void WriteBoolean(bool value)
+        public override void WriteBoolean(bool value)
         {
             if (this.position >= MAX_BLOCK_SIZE)
             {
                 this.Drain();
             }
+
             JavaBits.PutBoolean(this.buffer, this.position++, value);
         }
 
-        public void WriteByte(byte value)
+        public override void WriteByte(byte value)
         {
             if (this.position >= MAX_BLOCK_SIZE)
             {
                 this.Drain();
             }
+
             this.buffer[this.position++] = value;
         }
 
-        public void WriteChar(char value)
+        public override void WriteChar(char value)
         {
             if (this.position + 2 <= MAX_BLOCK_SIZE)
             {
@@ -101,7 +98,7 @@ namespace KD.Serialization.Java
             }
         }
 
-        public void WriteDouble(double value)
+        public override void WriteDouble(double value)
         {
             if (this.position + 8 <= MAX_BLOCK_SIZE)
             {
@@ -110,7 +107,7 @@ namespace KD.Serialization.Java
             }
         }
 
-        public void WriteFloat(float value)
+        public override void WriteFloat(float value)
         {
             if (this.position + 4 <= MAX_BLOCK_SIZE)
             {
@@ -119,7 +116,7 @@ namespace KD.Serialization.Java
             }
         }
 
-        public void WriteInt(int value)
+        public override void WriteInt(int value)
         {
             if (this.position + 4 <= MAX_BLOCK_SIZE)
             {
@@ -128,7 +125,7 @@ namespace KD.Serialization.Java
             }
         }
 
-        public void WriteLong(long value)
+        public override void WriteLong(long value)
         {
             if (this.position + 8 <= MAX_BLOCK_SIZE)
             {
@@ -145,12 +142,12 @@ namespace KD.Serialization.Java
         /// C# usings == Java imports
         /// </summary>
         /// <param name="value"></param>
-        public void WriteObject(object value)
+        public override void WriteObject(object value)
         {
             this.WriteObject(value, false);
         }
 
-        public void WriteShort(short value)
+        public override void WriteShort(short value)
         {
             if (this.position + 2 <= MAX_BLOCK_SIZE)
             {
@@ -159,7 +156,7 @@ namespace KD.Serialization.Java
             }
         }
 
-        public void WriteString(string value)
+        public override void WriteString(string value)
         {
             int endOffset = value.Length;
             int charPosition = 0;
@@ -177,12 +174,12 @@ namespace KD.Serialization.Java
             }
         }
 
-        public void WriteUnsignedByte(int value)
+        public override void WriteUnsignedByte(int value)
         {
             throw new System.NotImplementedException();
         }
 
-        public void WriteUnsignedShort(int value)
+        public override void WriteUnsignedShort(int value)
         {
             throw new System.NotImplementedException();
         }
@@ -209,8 +206,10 @@ namespace KD.Serialization.Java
             {
                 return this.blockMode;
             }
+
             this.Drain();
             this.blockMode = mode;
+
             return !this.blockMode;
         }
 
@@ -229,7 +228,7 @@ namespace KD.Serialization.Java
                 this.WriteBlockHeader(this.position);
             }
 
-            this.stream.Write(this.buffer, 0, this.position);
+            this.Stream.Write(this.buffer, 0, this.position);
             this.position = 0;
         }
 
@@ -244,13 +243,13 @@ namespace KD.Serialization.Java
             {
                 this.hBuffer[0] = TC_BLOCKDATA;
                 this.hBuffer[1] = (byte)position;
-                this.stream.Write(this.hBuffer, 0, 2);
+                this.Stream.Write(this.hBuffer, 0, 2);
             }
             else
             {
                 this.hBuffer[0] = TC_BLOCKDATALONG;
                 JavaBits.PutInt(this.hBuffer, 1, position);
-                this.stream.Write(this.hBuffer, 0, 5);
+                this.Stream.Write(this.hBuffer, 0, 5);
             }
         }
 
@@ -271,9 +270,11 @@ namespace KD.Serialization.Java
         {
             bool oldMode = this.SetBlockMode(false);
             this.recursionDepth++;
+
             try
             {
                 int handler;
+
                 if ((obj = this.replaceTable.Lookup(obj)) == null)
                 {
                     this.WriteNull();
@@ -295,6 +296,7 @@ namespace KD.Serialization.Java
 
                 // Remaining cases
                 Type objType = obj.GetType();
+
                 if (obj is string)
                 {
                     this.WriteString(obj as string);
@@ -337,8 +339,8 @@ namespace KD.Serialization.Java
             this.WriteByte(TC_OBJECT);
             this.WriteTypeDescription(objType, false);
             this.handleTable.Assign(unshared ? null : obj);
-            
-            if (this.getSerializableFields(objType).Count > 0)
+
+            if (obj is ISerializable)
             {
                 this.WriteExternalData(obj as ISerializable);
             }
@@ -357,6 +359,11 @@ namespace KD.Serialization.Java
             // TODO: Create an collection with types. 
             // The collection should be ordered by inheritance with those containing "higher" supertypes appearing first. 
             // The last one should be == obj.GetType().
+
+            this.SetBlockMode(true);
+            this.WriteObject(obj);
+            this.SetBlockMode(false);
+            this.WriteByte(TC_ENDBLOCKDATA);
         }
 
         /// <summary>
@@ -396,14 +403,14 @@ namespace KD.Serialization.Java
 
                     if (entry.ObjectType.IsPrimitive)
                     {
-                        this.TryWriteTypedPrimitive<int>(entry.Value, entry.ObjectType, this.WriteInt);
-                        this.TryWriteTypedPrimitive<byte>(entry.Value, entry.ObjectType, this.WriteByte);
-                        this.TryWriteTypedPrimitive<long>(entry.Value, entry.ObjectType, this.WriteLong);
-                        this.TryWriteTypedPrimitive<float>(entry.Value, entry.ObjectType, this.WriteFloat);
-                        this.TryWriteTypedPrimitive<double>(entry.Value, entry.ObjectType, this.WriteDouble);
-                        this.TryWriteTypedPrimitive<short>(entry.Value, entry.ObjectType, this.WriteShort);
-                        this.TryWriteTypedPrimitive<char>(entry.Value, entry.ObjectType, this.WriteChar);
-                        this.TryWriteTypedPrimitive<bool>(entry.Value, entry.ObjectType, this.WriteBoolean);
+                        this.TryWritePrimitiveType<int>(entry.Value, entry.ObjectType, this.WriteInt);
+                        this.TryWritePrimitiveType<byte>(entry.Value, entry.ObjectType, this.WriteByte);
+                        this.TryWritePrimitiveType<long>(entry.Value, entry.ObjectType, this.WriteLong);
+                        this.TryWritePrimitiveType<float>(entry.Value, entry.ObjectType, this.WriteFloat);
+                        this.TryWritePrimitiveType<double>(entry.Value, entry.ObjectType, this.WriteDouble);
+                        this.TryWritePrimitiveType<short>(entry.Value, entry.ObjectType, this.WriteShort);
+                        this.TryWritePrimitiveType<char>(entry.Value, entry.ObjectType, this.WriteChar);
+                        this.TryWritePrimitiveType<bool>(entry.Value, entry.ObjectType, this.WriteBoolean);
                     }
                     else
                     {
@@ -420,7 +427,7 @@ namespace KD.Serialization.Java
         /// <param name="value"></param>
         /// <param name="valueType"></param>
         /// <param name="writeInt"></param>
-        private void TryWriteTypedPrimitive<T>(object value, Type valueType, Action<T> action)
+        private void TryWritePrimitiveType<T>(object value, Type valueType, Action<T> action)
         {
             if (!valueType.IsPrimitive)
             {
@@ -462,16 +469,17 @@ namespace KD.Serialization.Java
             this.handleTable.Assign(unshared ? null : array);
 
             Type arrayElementType = arrayType.GetElementType();
+
             if (arrayElementType.IsPrimitive)
             {
-                this.TryWriteTypedArray<int>(array, this.WriteInt);
-                this.TryWriteTypedArray<byte>(array, this.WriteByte);
-                this.TryWriteTypedArray<long>(array, this.WriteLong);
-                this.TryWriteTypedArray<float>(array, this.WriteFloat);
-                this.TryWriteTypedArray<double>(array, this.WriteDouble);
-                this.TryWriteTypedArray<short>(array, this.WriteShort);
-                this.TryWriteTypedArray<char>(array, this.WriteChar);
-                this.TryWriteTypedArray<bool>(array, this.WriteBoolean);
+                this.TryWriteArray<int>(array, this.WriteInt);
+                this.TryWriteArray<byte>(array, this.WriteByte);
+                this.TryWriteArray<long>(array, this.WriteLong);
+                this.TryWriteArray<float>(array, this.WriteFloat);
+                this.TryWriteArray<double>(array, this.WriteDouble);
+                this.TryWriteArray<short>(array, this.WriteShort);
+                this.TryWriteArray<char>(array, this.WriteChar);
+                this.TryWriteArray<bool>(array, this.WriteBoolean);
             }
             else
             {
@@ -491,11 +499,12 @@ namespace KD.Serialization.Java
         /// <typeparam name="T"></typeparam>
         /// <param name="array"></param>
         /// <param name="action"></param>
-        private void TryWriteTypedArray<T>(object array, Action<T> action)
+        private void TryWriteArray<T>(object array, Action<T> action)
         {
             if (array is T[])
             {
                 T[] typedArray = array as T[];
+
                 foreach (T element in typedArray)
                 {
                     action(element);
@@ -543,6 +552,7 @@ namespace KD.Serialization.Java
         private void WriteTypeDescription(Type type, bool unshared)
         {
             int handle;
+
             if (type == null)
             {
                 this.WriteNull();
@@ -569,13 +579,16 @@ namespace KD.Serialization.Java
             this.WriteNonProxyDescription(type);
 
             this.SetBlockMode(true);
-            // Java adds here a methods to check annotations of class.
-            // TODO: Maybe add somethind ???
-            // This will be equal with removing "sealed" from JavaSerializer class.
+
+            // TODO: Add serialization for proxy classes here.
+
             this.SetBlockMode(false);
             this.WriteByte(TC_ENDBLOCKDATA);
 
-            this.WriteTypeDescription(type.BaseType, false);
+            if (type.BaseType != null)
+            {
+                this.WriteTypeDescription(type.BaseType, false);
+            }
         }
 
         /// <summary>
@@ -585,10 +598,13 @@ namespace KD.Serialization.Java
         private void WriteNonProxyDescription(Type type)
         {
             this.WriteString(type.FullName);
+
             // TODO: Write here a SerialVersionUID as this.WriteLong(...)
 
             byte flags = 0;
+
             // TODO: Add pre-if check to check if Type can be understand as Java "Externalizable"
+
             if (type.IsSerializable)
             {
                 flags |= SC_SERIALIZABLE;
@@ -601,6 +617,7 @@ namespace KD.Serialization.Java
             {
                 flags |= SC_ENUM;
             }
+
             this.WriteByte(flags);
 
             this.WriteFields(type);
@@ -635,6 +652,7 @@ namespace KD.Serialization.Java
         private void WriteFieldTypeString(string javaTypeSignature)
         {
             int handler;
+
             if (javaTypeSignature == null)
             {
                 this.WriteNull();
@@ -647,11 +665,6 @@ namespace KD.Serialization.Java
             {
                 this.WriteString(javaTypeSignature);
             }
-        }
-
-        private List<FieldInfo> getSerializableFields(Type type) 
-        {
-            return type.GetFields().Where(fi => !fi.IsNotSerialized).ToList();
         }
     }
 }

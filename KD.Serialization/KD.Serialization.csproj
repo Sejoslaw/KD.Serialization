@@ -2,6 +2,10 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <Authors>Krzysztof Dobrzyński</Authors>
+    <Copyright>https://github.com/Sejoslaw/KD.Serialization</Copyright>
+    <PackageLicenseUrl>https://github.com/Sejoslaw/KD.Serialization</PackageLicenseUrl>
+    <RepositoryUrl>https://github.com/Sejoslaw/KD.Serialization</RepositoryUrl>
   </PropertyGroup>
 
 </Project>

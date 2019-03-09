@@ -9,7 +9,8 @@ namespace JavaTests
         {
             var sample = new ExampleClass
             {
-                someByte = 19
+                variable = 19,
+                flag = true
             };
 
             this.Write("SimpleObject.bin", serializer =>
@@ -24,7 +25,8 @@ namespace JavaTests
         {
             var sample = new ExampleSerializableClass
             {
-                someByte = 26
+                variable = 19,
+                flag = true
             };
 
             this.Write("SerializableObject.bin", serializer =>

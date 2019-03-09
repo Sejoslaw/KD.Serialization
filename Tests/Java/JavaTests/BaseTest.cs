@@ -15,6 +15,8 @@ namespace JavaTests
                 {
                     action(serializer);
                 }
+
+                stream.Close();
             }
         }
     }

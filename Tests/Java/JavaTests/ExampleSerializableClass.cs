@@ -5,6 +5,7 @@ namespace JavaTests
     [Serializable]
     public class ExampleSerializableClass
     {
-        public byte someByte;
+        public int variable;
+        public bool flag;
     }
 }

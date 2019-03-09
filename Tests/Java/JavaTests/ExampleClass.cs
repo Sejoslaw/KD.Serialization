@@ -1,7 +1,11 @@
-﻿namespace JavaTests
+﻿using System;
+
+namespace JavaTests
 {
+    [Serializable]
     public class ExampleClass
     {
-        public byte someByte;
+        public int variable;
+        public bool flag;
     }
 }
